@@ -144,7 +144,7 @@ int main(int argc, char *args[])
 
     sprite = loadSprite("res/sprites/alien_1.png", renderer);
 
-    test = loadSound("res/sounds/magic.wav");
+    test = loadSound("res/sounds/laser.ogg");
 
     Uint32 previousFrameTime = SDL_GetTicks();
     Uint32 currentFrameTime = previousFrameTime;
