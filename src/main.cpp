@@ -8,10 +8,24 @@ const int SCREEN_WIDTH = 960;
 const int SCREEN_HEIGHT = 544;
 const int FRAME_RATE = 60;
 
+bool shouldAliensGoLeft = false;
+bool shouldAliensGoRight = true;
+bool shouldAliensGoDown = false;
+
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
 Mix_Chunk *laserSound = nullptr;
+Mix_Chunk *explosionSound = nullptr;
+
+typedef struct
+{
+    SDL_Rect bounds;
+    bool isDestroyed;
+} Laser;
+
+std::vector<Laser> playerLasers;
+std::vector<Laser> alienLasers;
 
 typedef struct
 {
@@ -100,7 +114,7 @@ std::vector<Alien> createAliens()
         {
             SDL_Rect alienBounds = {positionX, positionY, 38, 34};
 
-            Alien actualAlien = {alienBounds, actualSprite, alienPoints, 50, false};
+            Alien actualAlien = {alienBounds, actualSprite, alienPoints, 100, false};
 
             aliens.push_back(actualAlien);
             positionX += 60;
@@ -111,6 +125,62 @@ std::vector<Alien> createAliens()
     }
 
     return aliens;
+}
+
+void aliensMovement(float deltaTime)
+{
+    for (Alien &alien : aliens)
+    {
+        float alienPosition = alien.bounds.x + alien.bounds.w;
+
+        if (!shouldAliensGoLeft && alienPosition > SCREEN_WIDTH)
+        {
+            shouldAliensGoLeft = true;
+            shouldAliensGoRight = false;
+            shouldAliensGoDown = true;
+            break;
+        }
+
+        if (!shouldAliensGoRight && alienPosition < alien.bounds.w)
+        {
+            shouldAliensGoRight = true;
+            shouldAliensGoLeft = false;
+            shouldAliensGoDown = true;
+            break;
+        }
+    }
+
+// It moves faster when going to the left.
+    if (shouldAliensGoLeft)
+    {
+        for (Alien &alien : aliens)
+        {
+            alien.velocity = -100;
+        }
+    }
+
+    if (shouldAliensGoRight)
+    {
+        for (Alien &alien : aliens)
+        {
+            alien.velocity = 100;
+        }
+    }
+
+    if (shouldAliensGoDown)
+    {
+        for (Alien &alien : aliens)
+        {
+            alien.bounds.y += 10;
+        }
+
+        shouldAliensGoDown = false;
+    }
+
+    for (Alien &alien : aliens)
+    {
+         alien.bounds.x += alien.velocity * deltaTime;
+    }
 }
 
 Mix_Chunk *loadSound(const char *p_filePath)
@@ -166,6 +236,8 @@ void update(float deltaTime)
     {
         player.bounds.x += player.speed * deltaTime;
     }
+
+    aliensMovement(deltaTime);
 }
 
 void renderSprite(SDL_Texture *sprite, SDL_Rect spriteBounds)
@@ -269,6 +341,7 @@ int main(int argc, char *args[])
     structures.push_back({structureBounds4, structureSprite, 5, false});
 
     laserSound = loadSound("res/sounds/laser.ogg");
+    explosionSound = loadSound("res/sounds/explosion.ogg");
 
     Uint32 previousFrameTime = SDL_GetTicks();
     Uint32 currentFrameTime = previousFrameTime;
