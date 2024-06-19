@@ -286,22 +286,6 @@ void update(float deltaTime)
         player.bounds.x += player.speed * deltaTime;
     }
 
-    if (currentKeyStates[SDL_SCANCODE_SPACE])
-    {
-        lastTimePlayerShoot += deltaTime;
-
-        if (lastTimePlayerShoot >= 0.35)
-        {
-            SDL_Rect laserBounds = {player.bounds.x + 20, player.bounds.y - player.bounds.h, 4, 16};
-
-            playerLasers.push_back({laserBounds, false});
-
-            lastTimePlayerShoot = 0;
-
-            Mix_PlayChannel(-1, laserSound, 0);
-        }
-    }
-
     if (!mysteryShip.shouldMove)
     {
         lastTimeMysteryShipSpawn += deltaTime;
@@ -325,36 +309,27 @@ void update(float deltaTime)
         mysteryShip.bounds.x += mysteryShip.velocityX * deltaTime;
     }
 
+    if (currentKeyStates[SDL_SCANCODE_SPACE])
+    {
+        lastTimePlayerShoot += deltaTime;
+
+        if (lastTimePlayerShoot >= 0.35)
+        {
+            SDL_Rect laserBounds = {player.bounds.x + 20, player.bounds.y - player.bounds.h, 4, 16};
+
+            playerLasers.push_back({laserBounds, false});
+
+            lastTimePlayerShoot = 0;
+
+            Mix_PlayChannel(-1, laserSound, 0);
+        }
+    }
+
     for (Laser &laser : playerLasers)
     {
         laser.bounds.y -= 400 * deltaTime;
 
         if (laser.bounds.y < 0)
-            laser.isDestroyed = true;
-    }
-
-    lastTimeAliensShoot += deltaTime;
-
-    if (aliens.size() > 0 && lastTimeAliensShoot >= 0.6)
-    {
-        int randomAlienIndex = rand() % aliens.size();
-
-        Alien alienShooter = aliens[randomAlienIndex];
-
-        SDL_Rect laserBounds = {alienShooter.bounds.x + 20, alienShooter.bounds.y + alienShooter.bounds.h, 4, 16};
-
-        alienLasers.push_back({laserBounds, false});
-
-        lastTimeAliensShoot = 0;
-
-        Mix_PlayChannel(-1, laserSound, 0);
-    }
-
-    for (Laser &laser : alienLasers)
-    {
-        laser.bounds.y += 400 * deltaTime;
-
-        if (laser.bounds.y > SCREEN_HEIGHT)
             laser.isDestroyed = true;
     }
 
@@ -387,6 +362,31 @@ void update(float deltaTime)
         checkCollisionBetweenStructureAndLaser(laser);
     }
 
+    lastTimeAliensShoot += deltaTime;
+
+    if (aliens.size() > 0 && lastTimeAliensShoot >= 0.6)
+    {
+        int randomAlienIndex = rand() % aliens.size();
+
+        Alien alienShooter = aliens[randomAlienIndex];
+
+        SDL_Rect laserBounds = {alienShooter.bounds.x + 20, alienShooter.bounds.y + alienShooter.bounds.h, 4, 16};
+
+        alienLasers.push_back({laserBounds, false});
+
+        lastTimeAliensShoot = 0;
+
+        Mix_PlayChannel(-1, laserSound, 0);
+    }
+
+    for (Laser &laser : alienLasers)
+    {
+        laser.bounds.y += 400 * deltaTime;
+
+        if (laser.bounds.y > SCREEN_HEIGHT)
+            laser.isDestroyed = true;
+    }
+
     for (Laser &laser : alienLasers)
     {
         if (player.lives > 0 && hasCollision(player.bounds, laser.bounds))
@@ -404,7 +404,6 @@ void update(float deltaTime)
     aliensMovement(deltaTime);
 
     removingDestroyedElements();
-
 }
 
 void renderSprite(SDL_Texture *sprite, SDL_Rect spriteBounds)
@@ -433,17 +432,15 @@ void render()
         }
     }
 
-    for (Structure structure : structures)
+    SDL_SetRenderDrawColor(renderer, 243, 216, 63, 255);
+
+    for (Laser laser : alienLasers)
     {
-        if (!structure.isDestroyed)
+        if (!laser.isDestroyed)
         {
-            renderSprite(structure.sprite, structure.bounds);
+            SDL_RenderFillRect(renderer, &laser.bounds);
         }
     }
-
-    renderSprite(player.sprite, player.bounds);
-
-    SDL_SetRenderDrawColor(renderer, 243, 216, 63, 255);
 
     for (Laser laser : playerLasers)
     {
@@ -453,13 +450,15 @@ void render()
         }
     }
 
-    for (Laser laser : alienLasers)
+    for (Structure structure : structures)
     {
-        if (!laser.isDestroyed)
+        if (!structure.isDestroyed)
         {
-            SDL_RenderFillRect(renderer, &laser.bounds);
+            renderSprite(structure.sprite, structure.bounds);
         }
     }
+
+    renderSprite(player.sprite, player.bounds);
 
     SDL_RenderPresent(renderer);
 }
