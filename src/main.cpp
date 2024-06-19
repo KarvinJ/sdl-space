@@ -507,6 +507,9 @@ int main(int argc, char *args[])
         printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
     }
 
+    laserSound = loadSound("res/sounds/laser.ogg");
+    explosionSound = loadSound("res/sounds/explosion.ogg");
+
     SDL_Texture *shipSprite = loadSprite("res/sprites/mystery.png");
 
     SDL_Rect shipBounds = {SCREEN_WIDTH, 40, 58, 25};
@@ -532,9 +535,6 @@ int main(int argc, char *args[])
     structures.push_back({structureBounds2, structureSprite, 5, false});
     structures.push_back({structureBounds3, structureSprite, 5, false});
     structures.push_back({structureBounds4, structureSprite, 5, false});
-
-    laserSound = loadSound("res/sounds/laser.ogg");
-    explosionSound = loadSound("res/sounds/explosion.ogg");
 
     Uint32 previousFrameTime = SDL_GetTicks();
     Uint32 currentFrameTime = previousFrameTime;
