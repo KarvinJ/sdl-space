@@ -68,6 +68,8 @@ SDL_Texture *loadSprite(const char *file)
 
 typedef struct
 {
+    float x;
+    float y;
     SDL_Rect bounds;
     SDL_Texture *sprite;
     int points;
@@ -117,7 +119,7 @@ std::vector<Alien> createAliens()
         {
             SDL_Rect alienBounds = {positionX, positionY, 38, 34};
 
-            Alien actualAlien = {alienBounds, actualSprite, alienPoints, 100, false};
+            Alien actualAlien = {(float)positionX, (float)positionY, alienBounds, actualSprite, alienPoints, 100, false};
 
             aliens.push_back(actualAlien);
             positionX += 60;
@@ -160,7 +162,8 @@ void aliensMovement(float deltaTime)
     {
         for (Alien &alien : aliens)
         {
-            alien.bounds.y += 10;
+            alien.y += 500 * deltaTime;
+            alien.bounds.y = alien.y;
         }
 
         shouldAliensGoDown = false;
@@ -168,7 +171,8 @@ void aliensMovement(float deltaTime)
 
     for (Alien &alien : aliens)
     {
-        alien.bounds.x += alien.velocity * deltaTime;
+        alien.x += alien.velocity * deltaTime;
+        alien.bounds.x = alien.x;
     }
 }
 
