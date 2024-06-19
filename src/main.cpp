@@ -6,7 +6,6 @@
 
 const int SCREEN_WIDTH = 960;
 const int SCREEN_HEIGHT = 544;
-const int FRAME_RATE = 60;
 
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
@@ -32,6 +31,7 @@ typedef struct
     SDL_Texture *sprite;
     int lives;
     int speed;
+    int score;
 } Player;
 
 Player player;
@@ -100,18 +100,17 @@ std::vector<Alien> createAliens()
 
         switch (row)
         {
+            case 0:
+                actualSprite = alienSprite3;
+                break;
 
-        case 0:
-            actualSprite = alienSprite3;
-            break;
+            case 1:
+            case 2:
+                actualSprite = alienSprite2;
+                break;
 
-        case 1:
-        case 2:
-            actualSprite = alienSprite2;
-            break;
-
-        default:
-            actualSprite = alienSprite1;
+            default:
+                actualSprite = alienSprite1;
         }
 
         for (int columns = 0; columns < 13; columns++)
@@ -233,7 +232,8 @@ void checkCollisionBetweenStructureAndLaser(Laser &laser)
     }
 }
 
-void removingDestroyedElements() {
+void removingDestroyedElements()
+{
 
     for (auto iterator = aliens.begin(); iterator != aliens.end();)
     {
@@ -339,7 +339,7 @@ void update(float deltaTime)
         {
             laser.isDestroyed = true;
 
-            // player.score += mysteryShip.points;
+            player.score += mysteryShip.points;
 
             mysteryShip.isDestroyed = true;
 
@@ -353,7 +353,7 @@ void update(float deltaTime)
                 alien.isDestroyed = true;
                 laser.isDestroyed = true;
 
-                // player.score += alien.points;
+                player.score += alien.points;
 
                 Mix_PlayChannel(-1, explosionSound, 0);
             }
@@ -463,16 +463,6 @@ void render()
     SDL_RenderPresent(renderer);
 }
 
-void capFrameRate(Uint32 currentFrameTime)
-{
-    Uint32 frameTime = SDL_GetTicks() - currentFrameTime;
-
-    if (frameTime < 1000 / FRAME_RATE)
-    {
-        SDL_Delay(1000 / FRAME_RATE - frameTime);
-    }
-}
-
 int main(int argc, char *args[])
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
@@ -522,7 +512,7 @@ int main(int argc, char *args[])
 
     SDL_Rect playerBounds = {SCREEN_WIDTH / 2, SCREEN_HEIGHT - 40, 38, 34};
 
-    player = {playerBounds, playerSprite, 2, 600};
+    player = {playerBounds, playerSprite, 2, 600, 0};
 
     SDL_Rect structureBounds = {120, SCREEN_HEIGHT - 120, 56, 33};
     SDL_Rect structureBounds2 = {350, SCREEN_HEIGHT - 120, 56, 33};
@@ -540,7 +530,7 @@ int main(int argc, char *args[])
     Uint32 currentFrameTime = previousFrameTime;
     float deltaTime = 0.0f;
 
-//Activating random seed
+    // Activating random seed
     srand(time(NULL));
 
     while (true)
@@ -554,9 +544,8 @@ int main(int argc, char *args[])
         handleEvents();
         update(deltaTime);
         render();
-
-        capFrameRate(currentFrameTime);
     }
 
+    quitGame();
     return 0;
 }
