@@ -8,10 +8,6 @@ const int SCREEN_WIDTH = 960;
 const int SCREEN_HEIGHT = 544;
 const int FRAME_RATE = 60;
 
-bool shouldAliensGoLeft = false;
-bool shouldAliensGoRight = true;
-bool shouldAliensGoDown = false;
-
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
@@ -26,6 +22,9 @@ typedef struct
 
 std::vector<Laser> playerLasers;
 std::vector<Laser> alienLasers;
+
+float lastTimePlayerShoot;
+float lastTimeAliensShoot;
 
 typedef struct
 {
@@ -48,6 +47,8 @@ typedef struct
 } MysteryShip;
 
 MysteryShip mysteryShip;
+
+float lastTimeMysteryShipSpawn;
 
 typedef struct
 {
@@ -76,6 +77,9 @@ typedef struct
 
 std::vector<Alien> aliens;
 
+bool shouldChangeVelocity = false;
+bool shouldAliensGoDown = false;
+
 std::vector<Alien> createAliens()
 {
     SDL_Texture *alienSprite1 = loadSprite("res/sprites/alien_1.png");
@@ -85,7 +89,7 @@ std::vector<Alien> createAliens()
     std::vector<Alien> aliens;
 
     int positionX;
-    int positionY = 80;
+    int positionY = 50;
     int alienPoints = 8;
 
     SDL_Texture *actualSprite;
@@ -110,7 +114,7 @@ std::vector<Alien> createAliens()
             actualSprite = alienSprite1;
         }
 
-        for (int columns = 0; columns < 11; columns++)
+        for (int columns = 0; columns < 13; columns++)
         {
             SDL_Rect alienBounds = {positionX, positionY, 38, 34};
 
@@ -133,38 +137,24 @@ void aliensMovement(float deltaTime)
     {
         float alienPosition = alien.bounds.x + alien.bounds.w;
 
-        if (!shouldAliensGoLeft && alienPosition > SCREEN_WIDTH)
+        if ((!shouldChangeVelocity && alienPosition > SCREEN_WIDTH) || alienPosition < alien.bounds.w)
         {
-            shouldAliensGoLeft = true;
-            shouldAliensGoRight = false;
+            shouldChangeVelocity = true;
             shouldAliensGoDown = true;
-            break;
-        }
 
-        if (!shouldAliensGoRight && alienPosition < alien.bounds.w)
-        {
-            shouldAliensGoRight = true;
-            shouldAliensGoLeft = false;
-            shouldAliensGoDown = true;
             break;
         }
     }
 
-// It moves faster when going to the left.
-    if (shouldAliensGoLeft)
+    // It moves faster when going to the left.
+    if (shouldChangeVelocity)
     {
         for (Alien &alien : aliens)
         {
-            alien.velocity = -100;
+            alien.velocity *= -1;
         }
-    }
 
-    if (shouldAliensGoRight)
-    {
-        for (Alien &alien : aliens)
-        {
-            alien.velocity = 100;
-        }
+        shouldChangeVelocity = false;
     }
 
     if (shouldAliensGoDown)
@@ -179,7 +169,7 @@ void aliensMovement(float deltaTime)
 
     for (Alien &alien : aliens)
     {
-         alien.bounds.x += alien.velocity * deltaTime;
+        alien.bounds.x += alien.velocity * deltaTime;
     }
 }
 
@@ -209,16 +199,75 @@ void handleEvents()
 
     while (SDL_PollEvent(&event))
     {
-
         if (event.type == SDL_QUIT || event.key.keysym.sym == SDLK_ESCAPE)
         {
             quitGame();
             exit(0);
         }
+    }
+}
 
-        if (event.key.keysym.sym == SDLK_SPACE)
+bool hasCollision(SDL_Rect bounds, SDL_Rect bounds2)
+{
+    return bounds.x < bounds2.x + bounds2.w && bounds.x + bounds.w > bounds2.x &&
+           bounds.y < bounds2.y + bounds2.h && bounds.y + bounds.h > bounds2.y;
+}
+
+void checkCollisionBetweenStructureAndLaser(Laser &laser)
+{
+    for (Structure &structure : structures)
+    {
+        if (!structure.isDestroyed && hasCollision(structure.bounds, laser.bounds))
         {
-            Mix_PlayChannel(-1, laserSound, 0);
+            laser.isDestroyed = true;
+
+            structure.lives--;
+
+            if (structure.lives == 0)
+            {
+                structure.isDestroyed = true;
+            }
+
+            Mix_PlayChannel(-1, explosionSound, 0);
+        }
+    }
+}
+
+void removingDestroyedElements() {
+
+    for (auto iterator = aliens.begin(); iterator != aliens.end();)
+    {
+        if (iterator->isDestroyed)
+        {
+            aliens.erase(iterator);
+        }
+        else
+        {
+            iterator++;
+        }
+    }
+
+    for (auto iterator = playerLasers.begin(); iterator != playerLasers.end();)
+    {
+        if (iterator->isDestroyed)
+        {
+            playerLasers.erase(iterator);
+        }
+        else
+        {
+            iterator++;
+        }
+    }
+
+    for (auto iterator = alienLasers.begin(); iterator != alienLasers.end();)
+    {
+        if (iterator->isDestroyed)
+        {
+            alienLasers.erase(iterator);
+        }
+        else
+        {
+            iterator++;
         }
     }
 }
@@ -237,7 +286,125 @@ void update(float deltaTime)
         player.bounds.x += player.speed * deltaTime;
     }
 
+    if (currentKeyStates[SDL_SCANCODE_SPACE])
+    {
+        lastTimePlayerShoot += deltaTime;
+
+        if (lastTimePlayerShoot >= 0.35)
+        {
+            SDL_Rect laserBounds = {player.bounds.x + 20, player.bounds.y - player.bounds.h, 4, 16};
+
+            playerLasers.push_back({laserBounds, false});
+
+            lastTimePlayerShoot = 0;
+
+            Mix_PlayChannel(-1, laserSound, 0);
+        }
+    }
+
+    if (!mysteryShip.shouldMove)
+    {
+        lastTimeMysteryShipSpawn += deltaTime;
+
+        if (lastTimeMysteryShipSpawn >= 10)
+        {
+            lastTimeMysteryShipSpawn = 0;
+
+            mysteryShip.shouldMove = true;
+        }
+    }
+
+    if (mysteryShip.shouldMove)
+    {
+        if (mysteryShip.bounds.x > SCREEN_WIDTH + mysteryShip.bounds.w || mysteryShip.bounds.x < -80)
+        {
+            mysteryShip.velocityX *= -1;
+            mysteryShip.shouldMove = false;
+        }
+
+        mysteryShip.bounds.x += mysteryShip.velocityX * deltaTime;
+    }
+
+    for (Laser &laser : playerLasers)
+    {
+        laser.bounds.y -= 400 * deltaTime;
+
+        if (laser.bounds.y < 0)
+            laser.isDestroyed = true;
+    }
+
+    lastTimeAliensShoot += deltaTime;
+
+    if (aliens.size() > 0 && lastTimeAliensShoot >= 0.6)
+    {
+        int randomAlienIndex = rand() % aliens.size();
+
+        Alien alienShooter = aliens[randomAlienIndex];
+
+        SDL_Rect laserBounds = {alienShooter.bounds.x + 20, alienShooter.bounds.y + alienShooter.bounds.h, 4, 16};
+
+        alienLasers.push_back({laserBounds, false});
+
+        lastTimeAliensShoot = 0;
+
+        Mix_PlayChannel(-1, laserSound, 0);
+    }
+
+    for (Laser &laser : alienLasers)
+    {
+        laser.bounds.y += 400 * deltaTime;
+
+        if (laser.bounds.y > SCREEN_HEIGHT)
+            laser.isDestroyed = true;
+    }
+
+    for (Laser &laser : playerLasers)
+    {
+        if (!mysteryShip.isDestroyed && hasCollision(mysteryShip.bounds, laser.bounds))
+        {
+            laser.isDestroyed = true;
+
+            // player.score += mysteryShip.points;
+
+            mysteryShip.isDestroyed = true;
+
+            Mix_PlayChannel(-1, explosionSound, 0);
+        }
+
+        for (Alien &alien : aliens)
+        {
+            if (!alien.isDestroyed && hasCollision(alien.bounds, laser.bounds))
+            {
+                alien.isDestroyed = true;
+                laser.isDestroyed = true;
+
+                // player.score += alien.points;
+
+                Mix_PlayChannel(-1, explosionSound, 0);
+            }
+        }
+
+        checkCollisionBetweenStructureAndLaser(laser);
+    }
+
+    for (Laser &laser : alienLasers)
+    {
+        if (player.lives > 0 && hasCollision(player.bounds, laser.bounds))
+        {
+            laser.isDestroyed = true;
+
+            player.lives--;
+
+            Mix_PlayChannel(-1, explosionSound, 0);
+        }
+
+        checkCollisionBetweenStructureAndLaser(laser);
+    }
+
     aliensMovement(deltaTime);
+
+    removingDestroyedElements();
+
 }
 
 void renderSprite(SDL_Texture *sprite, SDL_Rect spriteBounds)
@@ -253,26 +420,53 @@ void render()
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
-    renderSprite(mysteryShip.sprite, mysteryShip.bounds);
+    if (!mysteryShip.isDestroyed)
+    {
+        renderSprite(mysteryShip.sprite, mysteryShip.bounds);
+    }
 
     for (Alien alien : aliens)
     {
-        renderSprite(alien.sprite, alien.bounds);
+        if (!alien.isDestroyed)
+        {
+            renderSprite(alien.sprite, alien.bounds);
+        }
     }
 
     for (Structure structure : structures)
     {
-        renderSprite(structure.sprite, structure.bounds);
+        if (!structure.isDestroyed)
+        {
+            renderSprite(structure.sprite, structure.bounds);
+        }
     }
 
     renderSprite(player.sprite, player.bounds);
 
+    SDL_SetRenderDrawColor(renderer, 243, 216, 63, 255);
+
+    for (Laser laser : playerLasers)
+    {
+        if (!laser.isDestroyed)
+        {
+            SDL_RenderFillRect(renderer, &laser.bounds);
+        }
+    }
+
+    for (Laser laser : alienLasers)
+    {
+        if (!laser.isDestroyed)
+        {
+            SDL_RenderFillRect(renderer, &laser.bounds);
+        }
+    }
+
     SDL_RenderPresent(renderer);
 }
 
-void capFrameRate(Uint32 frameStartTime)
+void capFrameRate(Uint32 currentFrameTime)
 {
-    Uint32 frameTime = SDL_GetTicks() - frameStartTime;
+    Uint32 frameTime = SDL_GetTicks() - currentFrameTime;
 
     if (frameTime < 1000 / FRAME_RATE)
     {
@@ -316,22 +510,22 @@ int main(int argc, char *args[])
 
     SDL_Texture *shipSprite = loadSprite("res/sprites/mystery.png");
 
-    SDL_Rect shipBounds = {SCREEN_WIDTH / 2, 30, 58, 25};
+    SDL_Rect shipBounds = {SCREEN_WIDTH, 40, 58, 25};
 
-    mysteryShip = {shipBounds, shipSprite, 50, -100, false, false};
+    mysteryShip = {shipBounds, shipSprite, 50, -150, false, false};
 
     aliens = createAliens();
 
     SDL_Texture *playerSprite = loadSprite("res/sprites/spaceship.png");
 
-    SDL_Rect playerBounds = {SCREEN_WIDTH / 2, SCREEN_HEIGHT - 50, 38, 34};
+    SDL_Rect playerBounds = {SCREEN_WIDTH / 2, SCREEN_HEIGHT - 40, 38, 34};
 
     player = {playerBounds, playerSprite, 2, 600};
 
-    SDL_Rect structureBounds = {120, SCREEN_HEIGHT - 100, 56, 33};
-    SDL_Rect structureBounds2 = {350, SCREEN_HEIGHT - 100, 56, 33};
-    SDL_Rect structureBounds3 = {200*3, SCREEN_HEIGHT - 100, 56, 33};
-    SDL_Rect structureBounds4 = {200*4, SCREEN_HEIGHT - 100, 56, 33};
+    SDL_Rect structureBounds = {120, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds2 = {350, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds3 = {200 * 3, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds4 = {200 * 4, SCREEN_HEIGHT - 120, 56, 33};
 
     SDL_Texture *structureSprite = loadSprite("res/sprites/structure.png");
 
@@ -347,6 +541,9 @@ int main(int argc, char *args[])
     Uint32 currentFrameTime = previousFrameTime;
     float deltaTime = 0.0f;
 
+//Activating random seed
+    srand(time(NULL));
+
     while (true)
     {
         currentFrameTime = SDL_GetTicks();
@@ -358,6 +555,8 @@ int main(int argc, char *args[])
         handleEvents();
         update(deltaTime);
         render();
+
+        capFrameRate(currentFrameTime);
     }
 
     return 0;
