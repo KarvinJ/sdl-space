@@ -14,6 +14,8 @@ SDL_Renderer *renderer = nullptr;
 Mix_Chunk *laserSound = nullptr;
 Mix_Chunk *explosionSound = nullptr;
 
+TTF_Font *fontSquare = nullptr; 
+
 SDL_Texture *scoreTexture = nullptr;
 SDL_Rect scoreBounds;
 
@@ -156,7 +158,6 @@ void aliensMovement(float deltaTime)
         }
     }
 
-    // It moves faster when going to the left.
     if (shouldChangeVelocity)
     {
         for (Alien &alien : aliens)
@@ -287,7 +288,6 @@ void removingDestroyedElements()
 
 void updateScore(const char *text)
 {
-    TTF_Font *fontSquare = TTF_OpenFont("res/fonts/square_sans_serif_7.ttf", 32);
     if (fontSquare == nullptr)
     {
         printf("TTF_OpenFont fontSquare: %s\n", TTF_GetError());
@@ -312,7 +312,7 @@ void updateScore(const char *text)
 
 void updateLives(const char *text)
 {
-    TTF_Font *fontSquare = TTF_OpenFont("res/fonts/square_sans_serif_7.ttf", 32);
+    // TTF_Font *fontSquare = TTF_OpenFont("res/fonts/square_sans_serif_7.ttf", 32);
     if (fontSquare == nullptr)
     {
         printf("TTF_OpenFont fontSquare: %s\n", TTF_GetError());
@@ -598,6 +598,8 @@ int main(int argc, char *args[])
     {
         return 1;
     }
+
+    fontSquare = TTF_OpenFont("res/fonts/square_sans_serif_7.ttf", 32);
 
     updateScore("Score: 0");
     updateLives("Lives: 2");
