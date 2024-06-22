@@ -20,8 +20,6 @@ SDL_Rect scoreBounds;
 SDL_Texture *liveTexture = nullptr;
 SDL_Rect liveBounds;
 
-char scoreText[20] = "SCORE: ";
-
 SDL_Color fontColor = {255, 255, 255};
 
 typedef struct
@@ -406,6 +404,14 @@ void update(float deltaTime)
 
             player.score += mysteryShip.points;
 
+            std::string scoreString = std::to_string(player.score);
+
+            std::string finalScoreString = "score: " + scoreString;
+
+            char const *score = finalScoreString.c_str();
+
+            updateScore(score);
+
             mysteryShip.isDestroyed = true;
 
             Mix_PlayChannel(-1, explosionSound, 0);
@@ -424,9 +430,9 @@ void update(float deltaTime)
 
                 std::string finalScoreString = "score: " + scoreString;
 
-                char const *intToChar = finalScoreString.c_str();
+                char const *score = finalScoreString.c_str();
 
-                updateScore(intToChar);
+                updateScore(score);
 
                 Mix_PlayChannel(-1, explosionSound, 0);
             }
@@ -501,13 +507,11 @@ void render()
     SDL_QueryTexture(scoreTexture, NULL, NULL, &scoreBounds.w, &scoreBounds.h);
     scoreBounds.x = 200;
     scoreBounds.y = scoreBounds.h / 2;
-
     SDL_RenderCopy(renderer, scoreTexture, NULL, &scoreBounds);
 
     SDL_QueryTexture(liveTexture, NULL, NULL, &liveBounds.w, &liveBounds.h);
     liveBounds.x = 600;
     liveBounds.y = liveBounds.h / 2;
-
     SDL_RenderCopy(renderer, liveTexture, NULL, &liveBounds);
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
