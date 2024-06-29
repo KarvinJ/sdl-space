@@ -301,6 +301,7 @@ void updateText(SDL_Texture *&texture, const char *text) {
         printf("TTF_OpenFont: %s\n", TTF_GetError());
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Unable to create texture from surface! SDL Error: %s\n", SDL_GetError());
     }
+    
     SDL_FreeSurface(surface);
 }
 
