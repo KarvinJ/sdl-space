@@ -22,6 +22,13 @@ SDL_Rect scoreBounds;
 SDL_Texture *liveTexture = nullptr;
 SDL_Rect liveBounds;
 
+SDL_Texture *shipSprite = nullptr;
+SDL_Texture *playerSprite = nullptr;
+SDL_Texture *alienSprite1 = nullptr;
+SDL_Texture *alienSprite2 = nullptr;
+SDL_Texture *alienSprite3 = nullptr;
+SDL_Texture *structureSprite = nullptr;
+
 SDL_Color fontColor = {255, 255, 255};
 
 typedef struct
@@ -91,13 +98,12 @@ typedef struct
 std::vector<Alien> aliens;
 
 bool shouldChangeVelocity = false;
-bool shouldAliensGoDown = false;
 
 std::vector<Alien> createAliens()
 {
-    SDL_Texture *alienSprite1 = loadSprite("res/sprites/alien_1.png");
-    SDL_Texture *alienSprite2 = loadSprite("res/sprites/alien_2.png");
-    SDL_Texture *alienSprite3 = loadSprite("res/sprites/alien_3.png");
+    alienSprite1 = loadSprite("res/sprites/alien_1.png");
+    alienSprite2 = loadSprite("res/sprites/alien_2.png");
+    alienSprite3 = loadSprite("res/sprites/alien_3.png");
 
     std::vector<Alien> aliens;
 
@@ -147,13 +153,14 @@ void aliensMovement(float deltaTime)
 {
     for (Alien &alien : aliens)
     {
+        alien.x += alien.velocity * deltaTime;
+        alien.bounds.x = alien.x;
+
         float alienPosition = alien.bounds.x + alien.bounds.w;
 
         if ((!shouldChangeVelocity && alienPosition > SCREEN_WIDTH) || alienPosition < alien.bounds.w)
         {
             shouldChangeVelocity = true;
-            shouldAliensGoDown = true;
-
             break;
         }
     }
@@ -163,26 +170,10 @@ void aliensMovement(float deltaTime)
         for (Alien &alien : aliens)
         {
             alien.velocity *= -1;
+            alien.bounds.y += 10;
         }
 
         shouldChangeVelocity = false;
-    }
-
-    if (shouldAliensGoDown)
-    {
-        for (Alien &alien : aliens)
-        {
-            alien.y += 500 * deltaTime;
-            alien.bounds.y = alien.y;
-        }
-
-        shouldAliensGoDown = false;
-    }
-
-    for (Alien &alien : aliens)
-    {
-        alien.x += alien.velocity * deltaTime;
-        alien.bounds.x = alien.x;
     }
 }
 
@@ -201,8 +192,52 @@ Mix_Chunk *loadSound(const char *p_filePath)
 
 void quitGame()
 {
+    SDL_DestroyTexture(shipSprite);
+    shipSprite = nullptr; // Set pointer to nullptr to avoid dangling pointer
+
+    SDL_DestroyTexture(playerSprite);
+    playerSprite = nullptr;
+
+    SDL_DestroyTexture(structureSprite);
+    structureSprite = nullptr;
+
+    SDL_DestroyTexture(alienSprite1);
+    alienSprite1 = nullptr;
+
+    SDL_DestroyTexture(alienSprite2);
+    alienSprite2 = nullptr;
+
+    SDL_DestroyTexture(alienSprite3);
+    alienSprite3 = nullptr;
+
+    SDL_DestroyTexture(scoreTexture);
+    scoreTexture = nullptr;
+
+    SDL_DestroyTexture(liveTexture);
+    liveTexture = nullptr;
+    
+    // Close SDL_image
+    IMG_Quit();
+
+    Mix_FreeChunk(laserSound);
+    laserSound = nullptr; 
+
+    Mix_FreeChunk(explosionSound);
+    explosionSound = nullptr; // Set pointer to nullptr to avoid dangling pointer
+
+    // Close SDL_mixer
+    Mix_CloseAudio();
+    Mix_Quit();
+
+    // Close SDL_ttf
+    TTF_Quit();
+
     SDL_DestroyRenderer(renderer);
+    renderer = nullptr;
+
     SDL_DestroyWindow(window);
+    window = nullptr;
+
     SDL_Quit();
 }
 
@@ -242,9 +277,8 @@ void checkCollisionBetweenStructureAndLaser(Laser &laser)
     }
 }
 
-void removingDestroyedElements()
+void removeDestroyedElements()
 {
-
     for (auto iterator = aliens.begin(); iterator != aliens.end();)
     {
         if (iterator->isDestroyed)
@@ -364,10 +398,7 @@ void update(float deltaTime)
 
         if (laser.bounds.y < 0)
             laser.isDestroyed = true;
-    }
 
-    for (Laser &laser : playerLasers)
-    {
         if (!mysteryShip.isDestroyed && SDL_HasIntersection(&mysteryShip.bounds, &laser.bounds))
         {
             laser.isDestroyed = true;
@@ -381,6 +412,8 @@ void update(float deltaTime)
             mysteryShip.isDestroyed = true;
 
             Mix_PlayChannel(-1, explosionSound, 0);
+
+            break;
         }
 
         for (Alien &alien : aliens)
@@ -428,10 +461,7 @@ void update(float deltaTime)
 
         if (laser.bounds.y > SCREEN_HEIGHT)
             laser.isDestroyed = true;
-    }
 
-    for (Laser &laser : alienLasers)
-    {
         if (player.lives > 0 && SDL_HasIntersection(&player.bounds, &laser.bounds))
         {
             laser.isDestroyed = true;
@@ -443,6 +473,8 @@ void update(float deltaTime)
             updateTextureText(liveTexture, liveString.c_str());
 
             Mix_PlayChannel(-1, explosionSound, 0);
+
+            break;
         }
 
         checkCollisionBetweenStructureAndLaser(laser);
@@ -450,7 +482,7 @@ void update(float deltaTime)
 
     aliensMovement(deltaTime);
 
-    removingDestroyedElements();
+    removeDestroyedElements();
 }
 
 void renderSprite(SDL_Texture *sprite, SDL_Rect spriteBounds)
@@ -567,7 +599,7 @@ int main(int argc, char *args[])
     laserSound = loadSound("res/sounds/laser.wav");
     explosionSound = loadSound("res/sounds/explosion.wav");
 
-    SDL_Texture *shipSprite = loadSprite("res/sprites/mystery.png");
+    shipSprite = loadSprite("res/sprites/mystery.png");
 
     SDL_Rect shipBounds = {SCREEN_WIDTH, 40, 58, 25};
 
@@ -575,7 +607,7 @@ int main(int argc, char *args[])
 
     aliens = createAliens();
 
-    SDL_Texture *playerSprite = loadSprite("res/sprites/spaceship.png");
+    playerSprite = loadSprite("res/sprites/spaceship.png");
 
     SDL_Rect playerBounds = {SCREEN_WIDTH / 2, SCREEN_HEIGHT - 40, 38, 34};
 
@@ -586,7 +618,7 @@ int main(int argc, char *args[])
     SDL_Rect structureBounds3 = {200 * 3, SCREEN_HEIGHT - 120, 56, 33};
     SDL_Rect structureBounds4 = {200 * 4, SCREEN_HEIGHT - 120, 56, 33};
 
-    SDL_Texture *structureSprite = loadSprite("res/sprites/structure.png");
+    structureSprite = loadSprite("res/sprites/structure.png");
 
     structures.push_back({structureBounds, structureSprite, 5, false});
     structures.push_back({structureBounds2, structureSprite, 5, false});
@@ -609,6 +641,7 @@ int main(int argc, char *args[])
         previousFrameTime = currentFrameTime;
 
         handleEvents();
+    
         update(deltaTime);
         render();
     }
