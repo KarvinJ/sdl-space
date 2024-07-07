@@ -13,6 +13,7 @@ SDL_Renderer *renderer = nullptr;
 
 Mix_Chunk *laserSound = nullptr;
 Mix_Chunk *explosionSound = nullptr;
+Mix_Music *music = nullptr;
 
 TTF_Font *fontSquare = nullptr; 
 
@@ -190,40 +191,36 @@ Mix_Chunk *loadSound(const char *p_filePath)
     return sound;
 }
 
+Mix_Music *loadMusic(const char *p_filePath)
+{
+    Mix_Music *music = nullptr;
+
+    music = Mix_LoadMUS(p_filePath);
+    if (music == nullptr)
+    {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+    }
+
+    return music;
+}
+
 void quitGame()
 {
     SDL_DestroyTexture(shipSprite);
-    shipSprite = nullptr; // Set pointer to nullptr to avoid dangling pointer
-
     SDL_DestroyTexture(playerSprite);
-    playerSprite = nullptr;
-
     SDL_DestroyTexture(structureSprite);
-    structureSprite = nullptr;
-
     SDL_DestroyTexture(alienSprite1);
-    alienSprite1 = nullptr;
-
     SDL_DestroyTexture(alienSprite2);
-    alienSprite2 = nullptr;
-
     SDL_DestroyTexture(alienSprite3);
-    alienSprite3 = nullptr;
-
     SDL_DestroyTexture(scoreTexture);
-    scoreTexture = nullptr;
-
     SDL_DestroyTexture(liveTexture);
-    liveTexture = nullptr;
     
     // Close SDL_image
     IMG_Quit();
 
     Mix_FreeChunk(laserSound);
-    laserSound = nullptr; 
-
     Mix_FreeChunk(explosionSound);
-    explosionSound = nullptr; // Set pointer to nullptr to avoid dangling pointer
+    Mix_FreeMusic(music);
 
     // Close SDL_mixer
     Mix_CloseAudio();
@@ -233,11 +230,7 @@ void quitGame()
     TTF_Quit();
 
     SDL_DestroyRenderer(renderer);
-    renderer = nullptr;
-
     SDL_DestroyWindow(window);
-    window = nullptr;
-
     SDL_Quit();
 }
 
@@ -410,7 +403,8 @@ void update(float deltaTime)
             updateTextureText(scoreTexture, scoreString.c_str());
 
             mysteryShip.isDestroyed = true;
-
+            
+            Mix_VolumeChunk(explosionSound, MIX_MAX_VOLUME / 2);
             Mix_PlayChannel(-1, explosionSound, 0);
 
             break;
@@ -429,6 +423,8 @@ void update(float deltaTime)
 
                 updateTextureText(scoreTexture, scoreString.c_str());
 
+                //method to reduce the volume in half.
+                Mix_VolumeChunk(explosionSound, MIX_MAX_VOLUME / 2);
                 Mix_PlayChannel(-1, explosionSound, 0);
 
                 break;
@@ -472,6 +468,7 @@ void update(float deltaTime)
 
             updateTextureText(liveTexture, liveString.c_str());
 
+            Mix_VolumeChunk(explosionSound, MIX_MAX_VOLUME / 2);
             Mix_PlayChannel(-1, explosionSound, 0);
 
             break;
@@ -598,6 +595,12 @@ int main(int argc, char *args[])
 
     laserSound = loadSound("res/sounds/laser.wav");
     explosionSound = loadSound("res/sounds/explosion.wav");
+
+    // Load music file (only one data piece, intended for streaming)
+    music = loadMusic("res/music/music.wav");
+    
+    // Start playing streamed music
+    Mix_PlayMusic(music, -1);
 
     shipSprite = loadSprite("res/sprites/mystery.png");
 
