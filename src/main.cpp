@@ -599,6 +599,9 @@ int main(int argc, char *args[])
     // Load music file (only one data piece, intended for streaming)
     music = loadMusic("res/music/music.wav");
     
+    //reduce music volume
+    // Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
+
     // Start playing streamed music
     Mix_PlayMusic(music, -1);
 
