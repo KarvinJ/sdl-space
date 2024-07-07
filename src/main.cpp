@@ -23,14 +23,14 @@ SDL_Rect scoreBounds;
 SDL_Texture *liveTexture = nullptr;
 SDL_Rect liveBounds;
 
+SDL_Color fontColor = {255, 255, 255};
+
 SDL_Texture *shipSprite = nullptr;
 SDL_Texture *playerSprite = nullptr;
 SDL_Texture *alienSprite1 = nullptr;
 SDL_Texture *alienSprite2 = nullptr;
 SDL_Texture *alienSprite3 = nullptr;
 SDL_Texture *structureSprite = nullptr;
-
-SDL_Color fontColor = {255, 255, 255};
 
 typedef struct
 {
@@ -263,6 +263,7 @@ void checkCollisionBetweenStructureAndLaser(Laser &laser)
                 structure.isDestroyed = true;
             }
 
+            Mix_VolumeChunk(explosionSound, MIX_MAX_VOLUME / 2);
             Mix_PlayChannel(-1, explosionSound, 0);
 
             break;
