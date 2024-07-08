@@ -8,20 +8,26 @@
 const int SCREEN_WIDTH = 960;
 const int SCREEN_HEIGHT = 544;
 
+bool isGamePaused;
+
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
 Mix_Chunk *laserSound = nullptr;
 Mix_Chunk *explosionSound = nullptr;
+Mix_Chunk *pauseSound = nullptr;
 Mix_Music *music = nullptr;
 
-TTF_Font *fontSquare = nullptr; 
+TTF_Font *fontSquare = nullptr;
 
 SDL_Texture *scoreTexture = nullptr;
 SDL_Rect scoreBounds;
 
 SDL_Texture *liveTexture = nullptr;
 SDL_Rect liveBounds;
+
+SDL_Texture *pauseTexture = nullptr;
+SDL_Rect pauseBounds;
 
 SDL_Color fontColor = {255, 255, 255};
 
@@ -57,6 +63,7 @@ Player player;
 
 typedef struct
 {
+    float x;
     SDL_Rect bounds;
     SDL_Texture *sprite;
     int points;
@@ -88,7 +95,6 @@ SDL_Texture *loadSprite(const char *file)
 typedef struct
 {
     float x;
-    float y;
     SDL_Rect bounds;
     SDL_Texture *sprite;
     int points;
@@ -137,7 +143,7 @@ std::vector<Alien> createAliens()
         {
             SDL_Rect alienBounds = {positionX, positionY, 38, 34};
 
-            Alien actualAlien = {(float)positionX, (float)positionY, alienBounds, actualSprite, alienPoints, 100, false};
+            Alien actualAlien = {(float)positionX, alienBounds, actualSprite, alienPoints, 100, false};
 
             aliens.push_back(actualAlien);
             positionX += 60;
@@ -214,12 +220,14 @@ void quitGame()
     SDL_DestroyTexture(alienSprite3);
     SDL_DestroyTexture(scoreTexture);
     SDL_DestroyTexture(liveTexture);
-    
+    SDL_DestroyTexture(pauseTexture);
+
     // Close SDL_image
     IMG_Quit();
 
     Mix_FreeChunk(laserSound);
     Mix_FreeChunk(explosionSound);
+    Mix_FreeChunk(pauseSound);
     Mix_FreeMusic(music);
 
     // Close SDL_mixer
@@ -244,6 +252,12 @@ void handleEvents()
         {
             quitGame();
             exit(0);
+        }
+
+        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_f)
+        {
+            isGamePaused = !isGamePaused;
+            Mix_PlayChannel(-1, pauseSound, 0);
         }
     }
 }
@@ -309,14 +323,17 @@ void removeDestroyedElements()
     }
 }
 
-void updateTextureText(SDL_Texture *&texture, const char *text) {
+void updateTextureText(SDL_Texture *&texture, const char *text)
+{
 
-    if (fontSquare == nullptr) {
+    if (fontSquare == nullptr)
+    {
         printf("TTF_OpenFont fontSquare: %s\n", TTF_GetError());
     }
 
     SDL_Surface *surface = TTF_RenderUTF8_Blended(fontSquare, text, fontColor);
-    if (surface == nullptr) {
+    if (surface == nullptr)
+    {
         printf("TTF_OpenFont: %s\n", TTF_GetError());
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Unable to create text surface! SDL Error: %s\n", SDL_GetError());
         exit(3);
@@ -324,7 +341,8 @@ void updateTextureText(SDL_Texture *&texture, const char *text) {
 
     SDL_DestroyTexture(texture);
     texture = SDL_CreateTextureFromSurface(renderer, surface);
-    if (texture == nullptr) {
+    if (texture == nullptr)
+    {
         printf("TTF_OpenFont: %s\n", TTF_GetError());
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Unable to create texture from surface! SDL Error: %s\n", SDL_GetError());
     }
@@ -366,7 +384,8 @@ void update(float deltaTime)
             mysteryShip.shouldMove = false;
         }
 
-        mysteryShip.bounds.x += mysteryShip.velocityX * deltaTime;
+        mysteryShip.x += mysteryShip.velocityX * deltaTime;
+        mysteryShip.bounds.x = mysteryShip.x;
     }
 
     if (currentKeyStates[SDL_SCANCODE_SPACE])
@@ -403,7 +422,7 @@ void update(float deltaTime)
             updateTextureText(scoreTexture, scoreString.c_str());
 
             mysteryShip.isDestroyed = true;
-            
+
             Mix_PlayChannel(-1, explosionSound, 0);
 
             break;
@@ -499,6 +518,14 @@ void render()
     liveBounds.y = liveBounds.h / 2;
     SDL_RenderCopy(renderer, liveTexture, NULL, &liveBounds);
 
+    if (isGamePaused)
+    {
+        SDL_QueryTexture(pauseTexture, NULL, NULL, &pauseBounds.w, &pauseBounds.h);
+        pauseBounds.x = 350;
+        pauseBounds.y = pauseBounds.h / 2 + 25;
+        SDL_RenderCopy(renderer, pauseTexture, NULL, &pauseBounds);
+    }
+
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
     if (!mysteryShip.isDestroyed)
@@ -584,22 +611,24 @@ int main(int argc, char *args[])
         return 1;
     }
 
-    fontSquare = TTF_OpenFont("res/fonts/square_sans_serif_7.ttf", 32);
+    fontSquare = TTF_OpenFont("res/fonts/square_sans_serif_7.ttf", 30);
 
     updateTextureText(scoreTexture, "Score: 0");
     updateTextureText(liveTexture, "Lives: 2");
+    updateTextureText(pauseTexture, "Game Paused");
 
     laserSound = loadSound("res/sounds/laser.wav");
+    pauseSound = loadSound("res/sounds/magic.wav");
     explosionSound = loadSound("res/sounds/explosion.wav");
-    
-    //method to reduce the volume in half.
+
+    // method to reduce the volume in half.
     Mix_VolumeChunk(explosionSound, MIX_MAX_VOLUME / 2);
 
     // Load music file (only one data piece, intended for streaming)
     music = loadMusic("res/music/music.wav");
-    
-    //reduce music volume
-    // Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
+
+    // reduce music volume
+    //  Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
 
     // Start playing streamed music
     Mix_PlayMusic(music, -1);
@@ -608,7 +637,7 @@ int main(int argc, char *args[])
 
     SDL_Rect shipBounds = {SCREEN_WIDTH, 40, 58, 25};
 
-    mysteryShip = {shipBounds, shipSprite, 50, -150, false, false};
+    mysteryShip = {SCREEN_WIDTH, shipBounds, shipSprite, 50, -200, false, false};
 
     aliens = createAliens();
 
@@ -640,17 +669,18 @@ int main(int argc, char *args[])
     while (true)
     {
         currentFrameTime = SDL_GetTicks();
-
         deltaTime = (currentFrameTime - previousFrameTime) / 1000.0f;
-
         previousFrameTime = currentFrameTime;
 
         handleEvents();
-    
-        update(deltaTime);
+
+        if (!isGamePaused)
+        {
+            update(deltaTime);
+        }
+
         render();
     }
 
     quitGame();
-    return 0;
 }
