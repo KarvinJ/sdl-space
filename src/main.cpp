@@ -458,8 +458,14 @@ void render()
     SDL_SetRenderDrawColor(renderer, 29, 29, 27, 255);
     SDL_RenderClear(renderer);
 
+    SDL_QueryTexture(scoreTexture, NULL, NULL, &scoreBounds.w, &scoreBounds.h);
+    scoreBounds.x = 200;
+    scoreBounds.y = scoreBounds.h / 2;
     SDL_RenderCopy(renderer, scoreTexture, NULL, &scoreBounds);
 
+    SDL_QueryTexture(liveTexture, NULL, NULL, &liveBounds.w, &liveBounds.h);
+    liveBounds.x = 600;
+    liveBounds.y = liveBounds.h / 2;
     SDL_RenderCopy(renderer, liveTexture, NULL, &liveBounds);
 
     if (isGamePaused)
@@ -528,15 +534,7 @@ int main(int argc, char *args[])
 
     updateTextureText(scoreTexture, "Score: 0", fontSquare, renderer);
 
-    SDL_QueryTexture(scoreTexture, NULL, NULL, &scoreBounds.w, &scoreBounds.h);
-    scoreBounds.x = 200;
-    scoreBounds.y = scoreBounds.h / 2;
-
     updateTextureText(liveTexture, "Lives: 2", fontSquare, renderer);
-
-    SDL_QueryTexture(liveTexture, NULL, NULL, &liveBounds.w, &liveBounds.h);
-    liveBounds.x = 600;
-    liveBounds.y = liveBounds.h / 2;
 
     updateTextureText(pauseTexture, "Game Paused", fontSquare, renderer);
 
