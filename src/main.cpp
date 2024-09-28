@@ -117,6 +117,11 @@ std::vector<Alien> createAliens()
 
     std::vector<Alien> aliens;
 
+    // we should use .reserve when creating a vector to avoid requiring allocation, reserve does: Increase the capacity
+    //  of the vector (the total number of elements that the vector can hold without requiring reallocation
+    // we increase the vector capacity to 5 * 11 = 55 aliens struct.
+    aliens.reserve(55);
+
     int positionX;
     int positionY = 50;
     int alienPoints = 8;
