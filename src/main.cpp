@@ -555,7 +555,7 @@ int main(int argc, char *args[])
 
     music = loadMusic("res/music/music.wav");
 
-     Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
+    Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
 
     Mix_PlayMusic(music, -1);
 
