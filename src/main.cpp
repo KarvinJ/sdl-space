@@ -473,11 +473,6 @@ void render()
     liveBounds.y = liveBounds.h / 2;
     SDL_RenderCopy(renderer, liveTexture, NULL, &liveBounds);
 
-    if (isGamePaused)
-    {
-        SDL_RenderCopy(renderer, pauseTexture, NULL, &pauseBounds);
-    }
-
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
     if (!mysteryShip.isDestroyed)
@@ -521,6 +516,11 @@ void render()
 
     renderSprite(player.sprite);
 
+    if (isGamePaused)
+    {
+        SDL_RenderCopy(renderer, pauseTexture, NULL, &pauseBounds);
+    }
+
     SDL_RenderPresent(renderer);
 }
 
@@ -555,9 +555,9 @@ int main(int argc, char *args[])
 
     music = loadMusic("res/music/music.wav");
 
-    Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
+    // Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
 
-    Mix_PlayMusic(music, -1);
+    // Mix_PlayMusic(music, -1);
 
     shipSprite = loadSprite("res/sprites/mystery.png", SCREEN_WIDTH, 40);
 
