@@ -16,6 +16,11 @@ Sprite loadSprite(SDL_Renderer *renderer, const char *filePath, int positionX, i
     return sprite;
 }
 
+void renderSprite(SDL_Renderer *renderer, Sprite &sprite)
+{
+    SDL_RenderCopy(renderer, sprite.texture, NULL, &sprite.textureBounds);
+}
+
 Mix_Chunk *loadSound(const char *filePath)
 {
     Mix_Chunk *sound = nullptr;

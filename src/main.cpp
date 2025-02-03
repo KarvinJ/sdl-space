@@ -8,6 +8,7 @@
 #include "sdl_assets_loader.h"
 
 bool isGamePaused;
+bool isGameOver;
 
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
@@ -134,17 +135,17 @@ std::vector<Alien> createAliens()
 
         switch (row)
         {
-            case 0:
-                actualSprite = alienSprite3;
-                break;
+        case 0:
+            actualSprite = alienSprite3;
+            break;
 
-            case 1:
-            case 2:
-                actualSprite = alienSprite2;
-                break;
+        case 1:
+        case 2:
+            actualSprite = alienSprite2;
+            break;
 
-            default:
-                actualSprite = alienSprite1;
+        default:
+            actualSprite = alienSprite1;
         }
 
         for (int columns = 0; columns < 11; columns++)
@@ -453,11 +454,6 @@ void update(float deltaTime)
     removeDestroyedElements();
 }
 
-void renderSprite(Sprite &sprite)
-{
-    SDL_RenderCopy(renderer, sprite.texture, NULL, &sprite.textureBounds);
-}
-
 void render()
 {
     SDL_SetRenderDrawColor(renderer, 29, 29, 27, 255);
@@ -473,22 +469,25 @@ void render()
     liveBounds.y = liveBounds.h / 2;
     SDL_RenderCopy(renderer, liveTexture, NULL, &liveBounds);
 
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-
     if (!mysteryShip.isDestroyed)
     {
-        renderSprite(mysteryShip.sprite);
+        renderSprite(renderer, mysteryShip.sprite);
     }
 
     for (Alien &alien : aliens)
     {
         if (!alien.isDestroyed)
         {
-            renderSprite(alien.sprite);
+            renderSprite(renderer, alien.sprite);
         }
     }
 
     SDL_SetRenderDrawColor(renderer, 243, 216, 63, 255);
+
+    SDL_RenderDrawLine(renderer, 0, 1, SCREEN_WIDTH, 1);
+    SDL_RenderDrawLine(renderer, 0, SCREEN_HEIGHT - 1, SCREEN_WIDTH, SCREEN_HEIGHT - 1);
+    SDL_RenderDrawLine(renderer, 0, 0, 0, SCREEN_HEIGHT);
+    SDL_RenderDrawLine(renderer, SCREEN_WIDTH - 1, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT);
 
     for (Laser &laser : alienLasers)
     {
@@ -510,11 +509,11 @@ void render()
     {
         if (!structure.isDestroyed)
         {
-            renderSprite(structure.sprite);
+            renderSprite(renderer, structure.sprite);
         }
     }
 
-    renderSprite(player.sprite);
+    renderSprite(renderer, player.sprite);
 
     if (isGamePaused)
     {
@@ -522,6 +521,30 @@ void render()
     }
 
     SDL_RenderPresent(renderer);
+}
+
+void setupStructures()
+{
+    SDL_Rect structureBounds = {120, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds2 = {350, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds3 = {200 * 3, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds4 = {200 * 4, SCREEN_HEIGHT - 120, 56, 33};
+
+    structureSprite = loadSprite("res/sprites/structure.png", 120, SCREEN_HEIGHT - 120);
+
+    structures.push_back({{structureSprite.texture, structureBounds}, 5, false});
+    structures.push_back({{structureSprite.texture, structureBounds2}, 5, false});
+    structures.push_back({{structureSprite.texture, structureBounds3}, 5, false});
+    structures.push_back({{structureSprite.texture, structureBounds4}, 5, false});
+}
+
+void resetGame()
+{
+    structures.clear();
+    setupStructures();
+
+    aliens.clear();
+    aliens = createAliens();
 }
 
 int main(int argc, char *args[])
@@ -569,17 +592,7 @@ int main(int argc, char *args[])
 
     player = {playerSprite, 2, 600, 0};
 
-    SDL_Rect structureBounds = {120, SCREEN_HEIGHT - 120, 56, 33};
-    SDL_Rect structureBounds2 = {350, SCREEN_HEIGHT - 120, 56, 33};
-    SDL_Rect structureBounds3 = {200 * 3, SCREEN_HEIGHT - 120, 56, 33};
-    SDL_Rect structureBounds4 = {200 * 4, SCREEN_HEIGHT - 120, 56, 33};
-
-    structureSprite = loadSprite("res/sprites/structure.png", 120, SCREEN_HEIGHT - 120);
-
-    structures.push_back({{structureSprite.texture, structureBounds}, 5, false});
-    structures.push_back({{structureSprite.texture, structureBounds2}, 5, false});
-    structures.push_back({{structureSprite.texture, structureBounds3}, 5, false});
-    structures.push_back({{structureSprite.texture, structureBounds4}, 5, false});
+    setupStructures();
 
     Uint32 previousFrameTime = SDL_GetTicks();
     Uint32 currentFrameTime = previousFrameTime;
@@ -595,6 +608,12 @@ int main(int argc, char *args[])
         previousFrameTime = currentFrameTime;
 
         handleEvents();
+
+        // this is failling when the player dies.
+        if (aliens.size() == 0 || player.lives == 0)
+        {
+            resetGame();
+        }
 
         if (!isGamePaused)
         {
