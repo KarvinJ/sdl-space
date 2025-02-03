@@ -81,22 +81,6 @@ typedef struct
 
 std::vector<Structure> structures;
 
-Sprite loadSprite(const char *file, int positionX, int positionY)
-{
-    SDL_Rect textureBounds = {positionX, positionY, 0, 0};
-
-    SDL_Texture *texture = IMG_LoadTexture(renderer, file);
-
-    if (texture != nullptr)
-    {
-        SDL_QueryTexture(texture, NULL, NULL, &textureBounds.w, &textureBounds.h);
-    }
-
-    Sprite sprite = {texture, textureBounds};
-
-    return sprite;
-}
-
 typedef struct
 {
     float x;
@@ -112,9 +96,9 @@ bool shouldChangeVelocity = false;
 
 std::vector<Alien> createAliens()
 {
-    alienSprite1 = loadSprite("res/sprites/alien_1.png", 0, 0);
-    alienSprite2 = loadSprite("res/sprites/alien_2.png", 0, 0);
-    alienSprite3 = loadSprite("res/sprites/alien_3.png", 0, 0);
+    alienSprite1 = loadSprite(renderer, "res/sprites/alien_1.png", 0, 0);
+    alienSprite2 = loadSprite(renderer, "res/sprites/alien_2.png", 0, 0);
+    alienSprite3 = loadSprite(renderer, "res/sprites/alien_3.png", 0, 0);
 
     std::vector<Alien> aliens;
 
@@ -226,6 +210,42 @@ void quitGame()
     SDL_Quit();
 }
 
+void setupStructures()
+{
+    SDL_Rect structureBounds = {120, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds2 = {350, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds3 = {200 * 3, SCREEN_HEIGHT - 120, 56, 33};
+    SDL_Rect structureBounds4 = {200 * 4, SCREEN_HEIGHT - 120, 56, 33};
+
+    structureSprite = loadSprite(renderer, "res/sprites/structure.png", 120, SCREEN_HEIGHT - 120);
+
+    structures.push_back({{structureSprite.texture, structureBounds}, 5, false});
+    structures.push_back({{structureSprite.texture, structureBounds2}, 5, false});
+    structures.push_back({{structureSprite.texture, structureBounds3}, 5, false});
+    structures.push_back({{structureSprite.texture, structureBounds4}, 5, false});
+}
+
+void resetGame()
+{
+    player.lives = 3;
+    player.score = 0;
+
+    std::string liveString = "lives: " + std::to_string(player.lives);
+    updateTextureText(liveTexture, liveString.c_str(), fontSquare, renderer);
+
+    std::string scoreString = "score: " + std::to_string(player.score);
+    updateTextureText(scoreTexture, scoreString.c_str(), fontSquare, renderer);
+
+    structures.clear();
+    setupStructures();
+
+    aliens.clear();
+    aliens = createAliens();
+
+    playerLasers.clear();
+    alienLasers.clear();
+}
+
 void handleEvents()
 {
     SDL_Event event;
@@ -241,6 +261,13 @@ void handleEvents()
         if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_f)
         {
             isGamePaused = !isGamePaused;
+            Mix_PlayChannel(-1, pauseSound, 0);
+        }
+
+        if (isGameOver && event.type == SDL_KEYDOWN)
+        {
+            isGameOver = false;
+            resetGame();
             Mix_PlayChannel(-1, pauseSound, 0);
         }
     }
@@ -523,30 +550,6 @@ void render()
     SDL_RenderPresent(renderer);
 }
 
-void setupStructures()
-{
-    SDL_Rect structureBounds = {120, SCREEN_HEIGHT - 120, 56, 33};
-    SDL_Rect structureBounds2 = {350, SCREEN_HEIGHT - 120, 56, 33};
-    SDL_Rect structureBounds3 = {200 * 3, SCREEN_HEIGHT - 120, 56, 33};
-    SDL_Rect structureBounds4 = {200 * 4, SCREEN_HEIGHT - 120, 56, 33};
-
-    structureSprite = loadSprite("res/sprites/structure.png", 120, SCREEN_HEIGHT - 120);
-
-    structures.push_back({{structureSprite.texture, structureBounds}, 5, false});
-    structures.push_back({{structureSprite.texture, structureBounds2}, 5, false});
-    structures.push_back({{structureSprite.texture, structureBounds3}, 5, false});
-    structures.push_back({{structureSprite.texture, structureBounds4}, 5, false});
-}
-
-void resetGame()
-{
-    structures.clear();
-    setupStructures();
-
-    aliens.clear();
-    aliens = createAliens();
-}
-
 int main(int argc, char *args[])
 {
     window = SDL_CreateWindow("My Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
@@ -562,7 +565,7 @@ int main(int argc, char *args[])
 
     updateTextureText(scoreTexture, "Score: 0", fontSquare, renderer);
 
-    updateTextureText(liveTexture, "Lives: 2", fontSquare, renderer);
+    updateTextureText(liveTexture, "Lives: 3", fontSquare, renderer);
 
     updateTextureText(pauseTexture, "Game Paused", fontSquare, renderer);
 
@@ -582,15 +585,15 @@ int main(int argc, char *args[])
 
     // Mix_PlayMusic(music, -1);
 
-    shipSprite = loadSprite("res/sprites/mystery.png", SCREEN_WIDTH, 40);
+    shipSprite = loadSprite(renderer, "res/sprites/mystery.png", SCREEN_WIDTH, 40);
 
     mysteryShip = {SCREEN_WIDTH, shipSprite, 50, -200, false, false};
 
     aliens = createAliens();
 
-    playerSprite = loadSprite("res/sprites/spaceship.png", SCREEN_WIDTH / 2, SCREEN_HEIGHT - 40);
+    playerSprite = loadSprite(renderer, "res/sprites/spaceship.png", SCREEN_WIDTH / 2, SCREEN_HEIGHT - 40);
 
-    player = {playerSprite, 2, 600, 0};
+    player = {playerSprite, 3, 600, 0};
 
     setupStructures();
 
@@ -612,10 +615,10 @@ int main(int argc, char *args[])
         // this is failling when the player dies.
         if (aliens.size() == 0 || player.lives == 0)
         {
-            resetGame();
+            isGameOver = true;
         }
 
-        if (!isGamePaused)
+        if (!isGamePaused && !isGameOver)
         {
             update(deltaTime);
         }
